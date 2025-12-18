@@ -81,13 +81,15 @@ pub async fn sys_futex(
 
     match cmd {
         FUTEX_WAIT => {
-            // Fail fast if the value has already changed
-            let current: u32 = copy_from_user(uaddr).await?;
-            if current != val {
-                return Err(KernelError::TryAgain);
-            }
+            // Ensure the wait-queue exists *before* we begin checking the
+            // futex word so that a racing FUTEX_WAKE cannot miss us.  This
+            // avoids the classic lost-wake-up race where a waker runs between
+            // our value check and queue insertion.
+            //
+            // After publishing the queue we perform a second sanity check on
+            // the user word, mirroring Linux’s “double read” strategy.
 
-            // Obtain (or create) the wait-queue for this futex word
+            // Obtain (or create) the wait-queue for this futex word.
             let table = FUTEX_TABLE.get_or_init(|| SpinLock::new(BTreeMap::new()));
             let waitq_arc = {
                 let mut guard = table.lock_save_irq();
@@ -97,6 +99,14 @@ pub async fn sys_futex(
                     .clone()
             };
 
+            // First read – may fault and therefore is done outside the lock.
+            let current: u32 = copy_from_user(uaddr).await?;
+            if current != val {
+                return Err(KernelError::TryAgain);
+            }
+
+            // Second read – ensures the value is still what we expect *after*
+            // the wait-queue entry is visible to other threads.
             if copy_from_user(uaddr).await? != val {
                 return Err(KernelError::TryAgain);
             }
