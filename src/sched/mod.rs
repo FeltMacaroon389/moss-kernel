@@ -101,16 +101,21 @@ fn schedule() {
 
     let next_task = sched_state.find_next_runnable_task();
     // if previous_task.tid != next_task.tid {
+    //     let runnable_tasks = sched_state
+    //         .run_queue
+    //         .values()
+    //         .filter(|t| *t.state.lock_save_irq() == TaskState::Runnable)
+    //         .count();
     //     if matches!(*previous_task.state.lock_save_irq(), TaskState::Sleeping | TaskState::Finished) {
     //         log::debug!(
-    //             "CPU {} scheduling switch due to removal from run queue: {} -> {}",
+    //             "CPU {} scheduling switch due to removal from run queue: {} -> {} (runnable tasks: {runnable_tasks})",
     //             CpuId::this().value(),
     //             previous_task.tid.value(),
-    //             next_task.tid.value()
+    //             next_task.tid.value(),
     //         );
     //     } else {
     //         log::debug!(
-    //             "CPU {} scheduling switch: {} -> {}",
+    //             "CPU {} scheduling switch: {} -> {} (runnable tasks: {runnable_tasks})",
     //             CpuId::this().value(),
     //             previous_task.tid.value(),
     //             next_task.tid.value()
@@ -325,6 +330,12 @@ impl SchedState {
                 *deadline_guard = Some(now_inst + Duration::from_millis(DEFAULT_TIME_SLICE_MS));
             }
             if let Some(d) = *deadline_guard {
+                // log::debug!(
+                //     "CPU {}: Next task {} has deadline in {}ms",
+                //     CpuId::this().value(),
+                //     next_task.tid.value(),
+                //     (d - now_inst).as_millis()
+                // );
                 schedule_preempt(d);
             }
         }
