@@ -54,25 +54,27 @@ impl SchedulableTask {
 
     /// Update accounting info for this task given the latest time.
     pub fn tick(&mut self, now: Instant) {
-        let delta_vt = if let Some(start) = self.exec_start {
+        let dv_increment = if let Some(start) = self.exec_start {
             let delta = now - start;
             let w = self.weight() as u128;
-            let dv = ((delta.as_nanos() as u128) << VT_FIXED_SHIFT) / w;
-            self.v_runtime = dv;
-            dv
+            ((delta.as_nanos()) << VT_FIXED_SHIFT) / w
         } else {
             0
         };
 
+        self.v_runtime = self.v_runtime.saturating_add(dv_increment);
+
         // Advance its eligible time by the virtual run time it just used
         // (EEVDF: v_ei += t_used / w_i).
-        self.v_eligible += delta_vt;
+        self.v_eligible = self.v_eligible.saturating_add(dv_increment);
 
         // Re-issue a virtual deadline
         let q_ns: u128 = DEFAULT_TIME_SLICE.as_nanos();
         let v_delta = (q_ns << VT_FIXED_SHIFT) / self.weight() as u128;
         let v_ei = self.v_eligible;
         self.v_deadline = v_ei + v_delta;
+
+        self.exec_start = Some(now);
     }
 
     /// Compute this task's scheduling weight.
