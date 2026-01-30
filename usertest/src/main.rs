@@ -194,12 +194,6 @@ fn test_mincore() {
 
 register_test!(test_mincore);
 
-fn failing_test() {
-    panic!("This test is supposed to fail");
-}
-
-register_test!(failing_test);
-
 fn run_test(test_fn: fn()) -> Result<(), i32> {
     // Fork a new process to run the test
     unsafe {
@@ -237,6 +231,7 @@ fn run_test(test_fn: fn()) -> Result<(), i32> {
 fn main() {
     println!("Running userspace tests ...");
     let start = std::time::Instant::now();
+    let mut failures = 0;
     for test in inventory::iter::<Test> {
         print!("{} ...", test.test_text);
         let _ = stdout().flush();
@@ -245,9 +240,14 @@ fn main() {
             Err(code) => {
                 println!(" {}", "FAILED".red());
                 eprintln!("Test '{}' failed with exit code {}", test.test_text, code);
+                failures += 1;
             }
         }
     }
     let end = std::time::Instant::now();
+    if failures > 0 {
+        eprintln!("{failures} tests failed in {} ms", (end - start).as_millis());
+        std::process::exit(1);
+    }
     println!("All tests passed in {} ms", (end - start).as_millis());
 }
