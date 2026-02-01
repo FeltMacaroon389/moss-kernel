@@ -1,6 +1,5 @@
-use intrusive_collections::{LinkedListLink, UnsafeRef, intrusive_adapter};
-
 use crate::memory::page::PageFrame;
+use intrusive_collections::{LinkedListLink, UnsafeRef, intrusive_adapter};
 
 #[derive(Clone, Copy, Debug)]
 pub struct AllocatedInfo {
@@ -47,5 +46,49 @@ impl Frame {
             link: LinkedListLink::new(),
             pfn,
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct FrameList {
+    base: *mut Frame,
+    base_page: PageFrame,
+    total_pages: usize,
+}
+
+impl FrameList {
+    /// Initalise the FrameList
+    ///
+    /// # SAFETY
+    ///
+    /// The memory pointed to by `pages` must have been initialized to default
+    /// values and be long enough to account for all pages in the system.
+    pub(super) unsafe fn new(pages: &mut [Frame], base_page: PageFrame) -> Self {
+        Self {
+            base: pages.as_mut_ptr(),
+            total_pages: pages.len(),
+            base_page,
+        }
+    }
+
+    pub fn base_page(&self) -> PageFrame {
+        self.base_page
+    }
+
+    pub fn total_pages(&self) -> usize {
+        self.total_pages
+    }
+
+    #[inline]
+    fn pfn_to_index(&self, pfn: PageFrame) -> usize {
+        assert!(pfn.value() >= self.base_page.value(), "PFN is below base");
+        let offset = pfn.value() - self.base_page.value();
+        assert!(offset < self.total_pages, "PFN is outside managed range");
+        offset
+    }
+
+    pub fn get_frame(&self, pfn: PageFrame) -> *mut Frame {
+        // SAFETY: There is bounds checking within the `pfn_to_index` function.
+        unsafe { self.base.add(self.pfn_to_index(pfn)) }
     }
 }

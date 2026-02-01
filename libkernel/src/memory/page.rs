@@ -49,6 +49,11 @@ impl PageFrame {
             n: self.n ^ (1 << order),
         }
     }
+
+    #[must_use]
+    pub fn add_pages(self, n: usize) -> Self {
+        Self { n: self.n + n }
+    }
 }
 
 /// A convenience wrapper for dealing with single-page allocations.
