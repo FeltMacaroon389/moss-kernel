@@ -12,6 +12,8 @@ Regardless of stdlib, you will need:
 - [Homebrew](https://brew.sh)
 - QEMU (`brew install qemu`)
 - e2fsprogs (`brew install e2fsprogs`)
+  - run `brew link --force e2fsprogs` to get mkfs.ext4 into your $PATH
+- wget (`brew install wget`) is used by some scripts and is needed
 
 If building for the GNU library:
 - aarch64-unknown-linux-gnu (`brew tap messense/macos-cross-toolchains && brew install aarch64-unknown-linux-gnu`)
